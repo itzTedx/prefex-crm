@@ -1,6 +1,8 @@
 version: "3.8"
 
 services:
+
+  # ── Database ──────────────────────────────────────────────────────────────
   perfex-db:
     image: mysql:8.0
     restart: unless-stopped
@@ -19,6 +21,10 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── PHP-FPM application ───────────────────────────────────────────────────
+  # The named volume perfex-app-data is seeded from this image on first start.
+  # The web installer writes application/config/app-config.php into that
+  # volume so it survives container restarts.
   perfex-app:
     build:
       context: .
@@ -27,16 +33,20 @@ services:
     depends_on:
       perfex-db:
         condition: service_healthy
-    environment:
-      APP_BASE_URL: ${APP_BASE_URL}
-      APP_ENC_KEY: ${APP_ENC_KEY}
-      APP_DB_HOSTNAME: perfex-db
-      APP_DB_USERNAME: ${MYSQL_USER}
-      APP_DB_PASSWORD: ${MYSQL_PASSWORD}
-      APP_DB_NAME: ${MYSQL_DATABASE}
     volumes:
-      - perfex-uploads:/var/www/html/uploads
-      - perfex-temp:/var/www/html/temp
+      - perfex-app-data:/var/www/html
+    networks:
+      - dokploy-network
+
+  # ── Nginx web server ──────────────────────────────────────────────────────
+  perfex-nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    depends_on:
+      - perfex-app
+    volumes:
+      - perfex-app-data:/var/www/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - dokploy-network
     labels:
@@ -46,14 +56,16 @@ services:
       - "traefik.http.routers.perfex-crm.tls.certResolver=letsencrypt"
       - "traefik.http.services.perfex-crm.loadbalancer.server.port=80"
 
+# ── Volumes ──────────────────────────────────────────────────────────────────
 volumes:
   perfex-db-data:
     driver: local
-  perfex-uploads:
-    driver: local
-  perfex-temp:
+  # Entire app tree lives here. Docker seeds it from the image on first run,
+  # then the installer and user uploads accumulate inside it.
+  perfex-app-data:
     driver: local
 
+# ── Networks ─────────────────────────────────────────────────────────────────
 networks:
   dokploy-network:
     external: true

@@ -1,4 +1,4 @@
-FROM php:8.1-apache-bullseye
+FROM php:8.1-fpm-bullseye
 
 # Install system dependencies required by Perfex CRM extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -36,12 +36,6 @@ RUN docker-php-ext-install -j$(nproc) \
     intl \
     opcache
 
-# Enable Apache modules required by Perfex CRM .htaccess
-RUN a2enmod rewrite headers
-
-# Enable AllowOverride All so .htaccess URL rewriting works
-RUN sed -i 's|AllowOverride None|AllowOverride All|g' /etc/apache2/apache2.conf
-
 # PHP runtime configuration
 RUN { \
     echo "allow_url_fopen = On"; \
@@ -63,24 +57,15 @@ RUN { \
 
 WORKDIR /var/www/html
 
-# Copy application source
+# Copy application source into the image.
+# On first container start this content seeds the named volume.
 COPY . /var/www/html/
 
-# Ensure writable directories exist and have correct ownership
-RUN mkdir -p \
-    uploads \
-    temp \
-    application/cache \
-    application/logs \
+# Set ownership and permissions
+RUN mkdir -p uploads temp application/cache application/logs \
     && chown -R www-data:www-data /var/www/html \
     && find /var/www/html -type d -exec chmod 755 {} \; \
     && find /var/www/html -type f -exec chmod 644 {} \; \
     && chmod -R 775 uploads temp application/cache application/logs
 
-# Copy and configure the entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-EXPOSE 80
-
-ENTRYPOINT ["docker-entrypoint.sh"]
+EXPOSE 9000

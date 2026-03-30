@@ -1,71 +1,54 @@
-FROM php:8.1-fpm-bullseye
+FROM php:8.1-apache
 
-# Install system dependencies required by Perfex CRM extensions
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libzip-dev \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
     libpng-dev \
-    libjpeg-dev \
+    libjpeg62-turbo-dev \
     libfreetype6-dev \
-    libssl-dev \
-    libcurl4-openssl-dev \
+    libzip-dev \
     libxml2-dev \
     libonig-dev \
+    libicu-dev \
     libc-client-dev \
     libkrb5-dev \
-    libexif-dev \
-    libicu-dev \
-    zip \
     unzip \
+    zip \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure extensions that need flags before installing
+# Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl
+    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        mysqli \
+        gd \
+        zip \
+        xml \
+        mbstring \
+        intl \
+        imap \
+        opcache \
+        exif \
+        bcmath
 
-# Install all required PHP extensions
-RUN docker-php-ext-install -j$(nproc) \
-    mysqli \
-    pdo \
-    pdo_mysql \
-    mbstring \
-    gd \
-    zip \
-    imap \
-    iconv \
-    exif \
-    intl \
-    opcache
+# Enable required Apache modules
+RUN a2enmod rewrite headers expires
 
-# PHP runtime configuration
-RUN { \
-    echo "allow_url_fopen = On"; \
-    echo "memory_limit = 256M"; \
-    echo "upload_max_filesize = 64M"; \
-    echo "post_max_size = 64M"; \
-    echo "max_execution_time = 300"; \
-    echo "date.timezone = UTC"; \
-} > /usr/local/etc/php/conf.d/perfex.ini
-
-# OPcache tuning for production
-RUN { \
-    echo "opcache.enable=1"; \
-    echo "opcache.memory_consumption=128"; \
-    echo "opcache.interned_strings_buffer=8"; \
-    echo "opcache.max_accelerated_files=4000"; \
-    echo "opcache.revalidate_freq=60"; \
-} > /usr/local/etc/php/conf.d/opcache.ini
+# Replace default Apache vhost with Perfex-specific config
+COPY docker/apache/perfex.conf /etc/apache2/sites-available/000-default.conf
 
 WORKDIR /var/www/html
 
-# Copy application source into the image.
-# On first container start this content seeds the named volume.
-COPY . /var/www/html/
+# Copy application files
+COPY . .
 
 # Set ownership and permissions
-RUN mkdir -p uploads temp application/cache application/logs \
-    && chown -R www-data:www-data /var/www/html \
-    && find /var/www/html -type d -exec chmod 755 {} \; \
+RUN chown -R www-data:www-data /var/www/html \
     && find /var/www/html -type f -exec chmod 644 {} \; \
-    && chmod -R 775 uploads temp application/cache application/logs
+    && find /var/www/html -type d -exec chmod 755 {} \; \
+    && chmod -R 775 /var/www/html/uploads \
+    && chmod -R 775 /var/www/html/temp \
+    && chmod -R 775 /var/www/html/application/cache \
+    && chmod -R 775 /var/www/html/application/logs
 
-EXPOSE 9000
+EXPOSE 80

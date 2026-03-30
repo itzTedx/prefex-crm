@@ -1,5 +1,14 @@
-perfex_crm.zip
-node_modules/
-.cursor/
-.git/
+.git
+.gitignore
+node_modules
 *.log
+.env
+docker-compose.override.yml
+
+# Local development artifacts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated config (will be created by /install wizard on first run)
+application/config/app-config.php

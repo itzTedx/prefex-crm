@@ -1,10 +1,29 @@
-version: "3.8"
+version: '3.8'
 
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: perfex_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Persist the config directory so app-config.php (created by /install wizard) survives restarts.
+      # On first run Docker copies image contents into the empty named volume automatically.
+      - app_config:/var/www/html/application/config
+      - app_uploads:/var/www/html/uploads
+      - app_temp:/var/www/html/temp
+      - app_logs:/var/www/html/application/logs
+      - app_cache:/var/www/html/application/cache
+    networks:
+      - perfex_network
 
-  # ── Database ──────────────────────────────────────────────────────────────
-  perfex-db:
+  db:
     image: mysql:8.0
+    container_name: perfex_db
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -12,56 +31,24 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
-      - perfex-db-data:/var/lib/mysql
-    networks:
-      - dokploy-network
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
-      timeout: 5s
-      retries: 10
-
-  # ── PHP-FPM application ───────────────────────────────────────────────────
-  # The named volume perfex-app-data is seeded from this image on first start.
-  # The web installer writes application/config/app-config.php into that
-  # volume so it survives container restarts.
-  perfex-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on:
-      perfex-db:
-        condition: service_healthy
-    volumes:
-      - perfex-app-data:/var/www/html
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
-      - dokploy-network
+      - perfex_network
 
-  # ── Nginx web server ──────────────────────────────────────────────────────
-  perfex-nginx:
-    image: nginx:stable-alpine
-    restart: unless-stopped
-    depends_on:
-      - perfex-app
-    ports:
-      - "80:80"
-    volumes:
-      - perfex-app-data:/var/www/html:ro
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    networks:
-      - dokploy-network
-
-# ── Volumes ──────────────────────────────────────────────────────────────────
 volumes:
-  perfex-db-data:
-    driver: local
-  # Entire app tree lives here. Docker seeds it from the image on first run,
-  # then the installer and user uploads accumulate inside it.
-  perfex-app-data:
-    driver: local
+  app_config:
+  app_uploads:
+  app_temp:
+  app_logs:
+  app_cache:
+  mysql_data:
 
-# ── Networks ─────────────────────────────────────────────────────────────────
 networks:
-  dokploy-network:
-    external: true
+  perfex_network:
+    driver: bridge

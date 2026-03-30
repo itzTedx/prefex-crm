@@ -24,6 +24,9 @@ temp/*
 # Generated app config (created by docker-entrypoint.sh at runtime)
 application/config/app-config.php
 
+# Actual env file with secrets — never commit this
+.env
+
 # OS
 .DS_Store
 Thumbs.db

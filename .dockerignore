@@ -1,0 +1,5 @@
+perfex_crm.zip
+node_modules/
+.cursor/
+.git/
+*.log

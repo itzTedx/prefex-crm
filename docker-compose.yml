@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  perfex-db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - perfex-db-data:/var/lib/mysql
+    networks:
+      - dokploy-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  perfex-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      perfex-db:
+        condition: service_healthy
+    environment:
+      APP_BASE_URL: ${APP_BASE_URL}
+      APP_ENC_KEY: ${APP_ENC_KEY}
+      APP_DB_HOSTNAME: perfex-db
+      APP_DB_USERNAME: ${MYSQL_USER}
+      APP_DB_PASSWORD: ${MYSQL_PASSWORD}
+      APP_DB_NAME: ${MYSQL_DATABASE}
+    volumes:
+      - perfex-uploads:/var/www/html/uploads
+      - perfex-temp:/var/www/html/temp
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.perfex-crm.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.perfex-crm.entrypoints=websecure"
+      - "traefik.http.routers.perfex-crm.tls.certResolver=letsencrypt"
+      - "traefik.http.services.perfex-crm.loadbalancer.server.port=80"
+
+volumes:
+  perfex-db-data:
+    driver: local
+  perfex-uploads:
+    driver: local
+  perfex-temp:
+    driver: local
+
+networks:
+  dokploy-network:
+    external: true

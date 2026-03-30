@@ -16,13 +16,9 @@ application/cache/*
 !application/cache/index.html
 
 # Runtime upload and temp dirs (mount as Docker volumes)
-uploads/*
-!uploads/index.html
 temp/*
 !temp/index.html
 
-# Generated app config (created by docker-entrypoint.sh at runtime)
-application/config/app-config.php
 
 # Actual env file with secrets — never commit this
 .env

@@ -10,5 +10,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+.ignore
+
 # Generated config (will be created by /install wizard on first run)
 application/config/app-config.php

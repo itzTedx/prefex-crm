@@ -36,6 +36,7 @@ RUN a2enmod rewrite headers expires
 
 # Replace default Apache vhost with Perfex-specific config
 COPY docker/apache/perfex.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
 WORKDIR /var/www/html
 

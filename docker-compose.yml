@@ -47,7 +47,7 @@ services:
       PMA_HOST: crm_database
       PMA_PORT: 3306
     ports:
-      - "8080:80"
+      - "8090:80"
     networks:
       - perfex_network
 

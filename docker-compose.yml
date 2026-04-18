@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
-      db:
+      crm_database:
         condition: service_healthy
     volumes:
       # Persist the config directory so app-config.php (created by /install wizard) survives restarts.
@@ -18,7 +18,7 @@ services:
     networks:
       - perfex_network
 
-  db:
+  crm_database:
     image: mysql:8.0
     restart: unless-stopped
     environment:
@@ -27,7 +27,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - crm_database_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
@@ -37,13 +37,27 @@ services:
     networks:
       - perfex_network
 
+  phpmyadmin:
+    image: phpmyadmin:latest
+    restart: unless-stopped
+    depends_on:
+      crm_database:
+        condition: service_healthy
+    environment:
+      PMA_HOST: crm_database
+      PMA_PORT: 3306
+    ports:
+      - "8080:80"
+    networks:
+      - perfex_network
+
 volumes:
   app_config:
   app_uploads:
   app_temp:
   app_logs:
   app_cache:
-  mysql_data:
+  crm_database_data:
 
 networks:
   perfex_network:

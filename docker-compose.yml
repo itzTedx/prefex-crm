@@ -37,20 +37,6 @@ services:
     networks:
       - perfex_network
 
-  phpmyadmin:
-    image: phpmyadmin:latest
-    restart: unless-stopped
-    depends_on:
-      crm_database:
-        condition: service_healthy
-    environment:
-      PMA_HOST: crm_database
-      PMA_PORT: 3306
-    ports:
-      - "8090:80"
-    networks:
-      - perfex_network
-
 volumes:
   app_config:
   app_uploads:

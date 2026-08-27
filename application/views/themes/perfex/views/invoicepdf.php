@@ -5,17 +5,19 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $dimensions = $pdf->getPageDimensions();
 
 $info_right_column = '';
-$info_left_column  = '';
+$info_left_column = '';
 
-$info_right_column .= '<span style="font-weight:bold;font-size:27px;">' . _l('invoice_pdf_heading') . '</span><br />';
+$info_right_column .= '<span style="font-weight:bold;font-size:27px;">TAX INVOICE</span><br />';
 $info_right_column .= '<b style="color:#4e4e4e;"># ' . $invoice_number . '</b>';
 
 if (get_option('show_status_on_pdf_ei') == 1) {
     $info_right_column .= '<br /><span style="color:rgb(' . invoice_status_color_pdf($status) . ');text-transform:uppercase;">' . format_invoice_status($status, '', false) . '</span>';
 }
 
-if ($status != Invoices_model::STATUS_PAID && $status != Invoices_model::STATUS_CANCELLED && get_option('show_pay_link_to_invoice_pdf') == 1
-    && found_invoice_mode($payment_modes, $invoice->id, false)) {
+if (
+    $status != Invoices_model::STATUS_PAID && $status != Invoices_model::STATUS_CANCELLED && get_option('show_pay_link_to_invoice_pdf') == 1
+    && found_invoice_mode($payment_modes, $invoice->id, false)
+) {
     $info_right_column .= ' - <a style="color:#84c529;text-decoration:none;text-transform:uppercase;" href="' . site_url('invoice/' . $invoice->id . '/' . $invoice->hash) . '"><1b>' . _l('view_invoice_pdf_link_pay') . '</1b></a>';
 }
 
@@ -51,7 +53,7 @@ $invoice_info .= '<br />' . _l('invoice_data_date') . ' ' . _d($invoice->date) .
 
 $invoice_info = hooks()->apply_filters('invoice_pdf_header_after_date', $invoice_info, $invoice);
 
-if (! empty($invoice->duedate)) {
+if (!empty($invoice->duedate)) {
     $invoice_info .= _l('invoice_data_duedate') . ' ' . _d($invoice->duedate) . '<br />';
     $invoice_info = hooks()->apply_filters('invoice_pdf_header_after_due_date', $invoice_info, $invoice);
 }
@@ -73,14 +75,15 @@ foreach ($pdf_custom_fields as $field) {
     if ($value == '') {
         continue;
     }
+
     $invoice_info .= $field['name'] . ': ' . $value . '<br />';
 }
 
-$invoice_info      = hooks()->apply_filters('invoice_pdf_header_after_custom_fields', $invoice_info, $invoice);
+$invoice_info = hooks()->apply_filters('invoice_pdf_header_after_custom_fields', $invoice_info, $invoice);
 $organization_info = hooks()->apply_filters('invoicepdf_organization_info', $organization_info, $invoice);
-$invoice_info      = hooks()->apply_filters('invoice_pdf_info', $invoice_info, $invoice);
+$invoice_info = hooks()->apply_filters('invoice_pdf_info', $invoice_info, $invoice);
 
-$left_info  = $swap == '1' ? $invoice_info : $organization_info;
+$left_info = $swap == '1' ? $invoice_info : $organization_info;
 $right_info = $swap == '1' ? $organization_info : $invoice_info;
 
 pdf_multi_row($left_info, $right_info, $pdf, ($dimensions['wk'] / 2) - $dimensions['lm']);
@@ -143,11 +146,11 @@ if (count($invoice->payments) > 0 && get_option('show_total_paid_on_invoice') ==
     <tr>
         <td align="right" width="85%"><strong>' . _l('invoice_total_paid') . '</strong></td>
         <td align="right" width="15%">-' . app_format_money(sum_from_table(db_prefix() . 'invoicepaymentrecords', [
-        'field' => 'amount',
-        'where' => [
-            'invoiceid' => $invoice->id,
-        ],
-    ]), $invoice->currency_name) . '</td>
+            'field' => 'amount',
+            'where' => [
+                'invoiceid' => $invoice->id,
+            ],
+        ]), $invoice->currency_name) . '</td>
     </tr>';
 }
 
@@ -196,18 +199,20 @@ if (count($invoice->payments) > 0 && get_option('show_transactions_on_invoice_pd
 
     foreach ($invoice->payments as $payment) {
         $payment_name = $payment['name'];
-        if (! empty($payment['paymentmethod'])) {
+        if (!empty($payment['paymentmethod'])) {
             $payment_name .= ' - ' . $payment['paymentmethod'];
         }
+
         $tblhtml .= '
             <tr>
-            <td>' . $payment['paymentid'] . '</td>
-            <td>' . $payment_name . '</td>
-            <td>' . _d($payment['date']) . '</td>
-            <td>' . app_format_money($payment['amount'], $invoice->currency_name) . '</td>
+                <td>' . $payment['paymentid'] . '</td>
+                <td>' . $payment_name . '</td>
+                <td>' . _d($payment['date']) . '</td>
+                <td>' . app_format_money($payment['amount'], $invoice->currency_name) . '</td>
             </tr>
         ';
     }
+
     $tblhtml .= '</tbody>';
     $tblhtml .= '</table>';
     $pdf->writeHTML($tblhtml, true, false, false, false, '');
@@ -221,10 +226,11 @@ if (found_invoice_mode($payment_modes, $invoice->id, true, true)) {
 
     foreach ($payment_modes as $mode) {
         if (is_numeric($mode['id'])) {
-            if (! is_payment_mode_allowed_for_invoice($mode['id'], $invoice->id)) {
+            if (!is_payment_mode_allowed_for_invoice($mode['id'], $invoice->id)) {
                 continue;
             }
         }
+
         if (isset($mode['show_on_pdf']) && $mode['show_on_pdf'] == 1) {
             $pdf->Ln(1);
             $pdf->Cell(0, 0, $mode['name'], 0, 1, 'L', 0, '', 0);
@@ -234,7 +240,7 @@ if (found_invoice_mode($payment_modes, $invoice->id, true, true)) {
     }
 }
 
-if (! empty($invoice->clientnote)) {
+if (!empty($invoice->clientnote)) {
     $pdf->Ln(4);
     $pdf->SetFont($font_name, 'B', $font_size);
     $pdf->Cell(0, 0, _l('invoice_note'), 0, 1, 'L', 0, '', 0);
@@ -243,7 +249,7 @@ if (! empty($invoice->clientnote)) {
     $pdf->writeHTMLCell('', '', '', '', $invoice->clientnote, 0, 1, false, true, 'L', true);
 }
 
-if (! empty($invoice->terms)) {
+if (!empty($invoice->terms)) {
     $pdf->Ln(4);
     $pdf->SetFont($font_name, 'B', $font_size);
     $pdf->Cell(0, 0, _l('terms_and_conditions') . ':', 0, 1, 'L', 0, '', 0);
